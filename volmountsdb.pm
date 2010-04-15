@@ -4,29 +4,29 @@ use base 'Exporter';
 use DBI;
 
 our @EXPORT = qw(
-volmountsdb_init 
-insert_cell 
-get_cells 
-insert_voltype 
-get_voltypes 
-insert_volume 
-insert_mountpoint
-get_volume_id_by_name
-mounts_from_root_id
-print_mountpoints_by_path
-print_mountpoints_by_vol
+	volmountsdb_init 
+	insert_cell 
+	get_cells 
+	insert_voltype 
+	get_voltypes 
+	insert_volume 
+	insert_mountpoint
+	get_volume_id_by_name
+	mounts_from_root_id
+	print_mountpoints_by_path
+	print_mountpoints_by_vol
 );
 
-my $dbpass = 'volmounts';
-my $dbuser = 'volmounts';
-my $dbhost = 'early.bx.psu.edu';
-my $dbname = 'volmounts-db';
 
 my $dbh;
 my %mounts_by_path = ();
 my %mounts_by_vol = ();
 
+##
+## initialize connection to db
+##
 sub volmountsdb_init {
+	my ($dbpass, $dbuser, $dbhost, $dbname) = @_;
 	$dbh = DBI->connect("DBI:mysql:database=$dbname;host=$dbhost",
 		$dbuser, $dbpass) or die "Can't connect to DB\n";
 }
