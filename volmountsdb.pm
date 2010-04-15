@@ -26,7 +26,7 @@ my %mounts_by_vol = ();
 ## initialize connection to db
 ##
 sub volmountsdb_init {
-	my ($dbpass, $dbuser, $dbhost, $dbname) = @_;
+	my ($dbuser, $dbpass, $dbhost, $dbname) = @_;
 	$dbh = DBI->connect("DBI:mysql:database=$dbname;host=$dbhost",
 		$dbuser, $dbpass) or die "Can't connect to DB\n";
 }
