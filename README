@@ -1,0 +1,14 @@
+volmountsdb
+
+This is an experimental database and related perl "API" and scripts to feed the output of the new OpenAFS volmounts
+command into a MySQL database.
+
+volmountsdb.pm - functions for working with the database
+scrape_volmounts.pl - feed the output of volmounts into the database
+printmounts.pl - simple wrapper tool around the print_mountpints_by_* functions
+volmountsdb.sql - MySQL schema
+
+Requirements:
+- Perl 5
+- DBI
+- DBD::mysql
