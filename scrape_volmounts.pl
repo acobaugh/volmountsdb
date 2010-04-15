@@ -6,20 +6,23 @@ use strict;
 use lib '.';
 use volmountsdb;
 
-volmountsdb_init();
+volmountsdb_init('dbuser', 'dbpass', 'dbhost' 'dbname');
 
-my @volskip = ('root.afs', 'root.afs.readonly');
+# volumes to skip
+my @volskip = ();
+
 # output format of volmounts:
 # volume type|volume name|volume id|parent volume id|vnode id|uniquifier|dataVersion|mount point|relative path
-# 1 = volume type
-# 2 = volume name
-# 3 = volume id
-# 4 = parent volume id
-# 5 = vnode id
-# 6 = uniquifier
-# 7 = DV
-# 8 = mount point
-# 9 = relative path
+
+# 0 = volume type
+# 1 = volume name
+# 2 = volume id
+# 3 = parent volume id
+# 4 = vnode id
+# 5 = uniquifier
+# 6 = DV
+# 7 = mount point
+# 8 = relative path
 
 my $wscell = `fs wscell 2>&1`;
 $wscell =~ s/.*'(.*)'\n/$1/;
