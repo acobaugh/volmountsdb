@@ -3,20 +3,21 @@
 use strict;
 
 use lib '.';
-use volmountsdb;
+use VolmountsDB;
 
-if (($ARGV[0] ne '-v' and $ARGV[0] ne '-p') || -z $ARGV[1] || -z $ARGV[2]) {
-	print "Usage: printmounts -v|-p <volume> <basepath>\n\n";
+if ($ARGV[0] ne '-v' and $ARGV[0] ne '-p') {
+	print "Usage: printmounts -v|-p\n\n";
 	exit 1;
 }
 
-volmountsdb_init();
-
-mounts_from_root_id(get_volume_id_by_name($ARGV[1]), $ARGV[2]);
+my $db = VolmountsDB->new('dbuser', 'dbpass', 'dbhost', 'dbname', 'basepath');
+if (!$db) {
+	print "Failed to connect to database\n";
+}
 
 if ($ARGV[0] eq '-p') {
-	print_mountpoints_by_path();
+	$db->print_mountpoints_by_path();
 } elsif ($ARGV[0] eq '-v') {
-	print_mountpoints_by_vol();
+	$db->print_mountpoints_by_vol();
 }
 
