@@ -130,7 +130,7 @@ sub walkmounts {
 		$self->{mounts_by_path}{$thispath}{'cell'} = $self->get_cell_by_id($ref->{'cell_id'});
 
 		$self->{mounts_by_vol}{$ref->{'volume_name'}}{'cell'} = $self->get_cell_by_id($ref->{'cell_id'});
-		$self->{mounts_by_vol}{$ref->{'volume_name'}}{'mounts'}{$thispath} = $ref->{'mountpoint_type'};
+		$self->{mounts_by_vol}{$ref->{'volume_name'}}{'paths'}{$thispath} = $ref->{'mountpoint_type'};
 
 		my $volid = $self->get_volume_id_by_name($ref->{'volume_name'});
 		if ($volid ne 0 and $volstack{$ref->{'volume_name'}} ne 1) {
@@ -148,11 +148,41 @@ sub refresh_mounts {
 	$self->walkmounts($self->get_volume_id_by_name('root.cell'), $self->{basepath}, ('root.cell', 'root.afs'));
 }
 
+##
+## return mounts_by_path
+##
+# this is a hash that looks like this:
+#
+# $hash = (
+#	/path/to/mountpoint = (
+#		mtpttype = '#|%',
+#		volname = 'name of volume',
+#		cell = 'cell name'
+#	)
+#	...
+# )
+#
 sub get_mounts_by_path {
 	my $self = shift;
 	return %{$self->{mounts_by_path}};
 }
 
+##
+## return mounts_by_vol
+##
+# this is a hash that looks like this:
+#
+# %hash = (
+#	volume_name = (
+#		cell = 'name of cell',
+#		paths = (
+#			/path/to/mountpoint = '#|%',
+#			...
+#		)
+#	)
+#	...
+# )
+#
 sub get_mounts_by_vol {
 	my $self = shift;
 	return %{$self->{mounts_by_vol}};
@@ -172,8 +202,8 @@ sub print_mountpoints_by_vol {
 	my %by_vol = $self->get_mounts_by_vol();
 	foreach my $vol (sort keys %by_vol) {
 		printf "%s|%s\n", $vol, $by_vol{$vol}{'cell'}; 
-		foreach (sort keys %{$by_vol{$vol}{'mounts'}}) {
-			printf "\t%s %s\n", $by_vol{$vol}{'mounts'}{$_}, $_;
+		foreach (sort keys %{$by_vol{$vol}{'paths'}}) {
+			printf "\t%s %s\n", $by_vol{$vol}{'paths'}{$_}, $_;
 		}
 		print "\n";
 	}
