@@ -3,10 +3,9 @@
 use warnings;
 use strict;
 
-use lib '.';
-use volmountsdb;
+use VolmountsDB;
 
-volmountsdb_init('dbuser', 'dbpass', 'dbhost' 'dbname');
+my $vdb = VolmountsDB->new('dbuser', 'dbpass', 'dbhost', 'dbname', 'basepath');
 
 # volumes to skip
 my @volskip = ();
@@ -27,8 +26,8 @@ my @volskip = ();
 my $wscell = `fs wscell 2>&1`;
 $wscell =~ s/.*'(.*)'\n/$1/;
 
-my $cells = get_cells;
-my $voltypes = get_voltypes;
+my $cells = $vdb->get_cells;
+my $voltypes = $vdb->get_voltypes;
 
 while (<STDIN>) {
 	next if m/Processing Partition/;
@@ -62,16 +61,15 @@ while (<STDIN>) {
 		time, $voltype, $volname, $volid, $pvolid, $mtptvol, $mtptcell, $mtpttype, $mtptpath;
 	
 	if (!defined($cells->{$mtptcell})) {
-		insert_cell($mtptcell);
-		$cells = get_cells;
+		$vdb->insert_cell($mtptcell);
+		$cells = $vdb->get_cells;
 	}
 	if (!defined($voltypes->{$voltype})) {
-		insert_voltype($voltype);
-		$voltypes = get_voltypes;
+		$vdb->insert_voltype($voltype);
+		$voltypes = $vdb->get_voltypes;
 	}
-	insert_volume($volid, $voltypes->{$a[0]}, $volname, $cells->{$mtptcell});
-	insert_mountpoint($mtptvol, $pvolid, $cells->{$mtptcell}, $mtpttype, $mtptpath, time);
-	
+	$vdb->insert_volume($volid, $voltypes->{$a[0]}, $volname, $cells->{$mtptcell});
+	$vdb->insert_mountpoint($mtptvol, $pvolid, $cells->{$mtptcell}, $mtpttype, $mtptpath, time);
 }
 
 
