@@ -20,7 +20,7 @@ CREATE TABLE mountpoint (
 	mountpoint_lastseen	INTEGER(10),
 	volume_name		CHAR(30) NOT NULL default '',
 	cell_id			INTEGER(2),
-	PRIMARY KEY (volume_name, cell_id, mountpoint_path)
+	PRIMARY KEY (volume_name, cell_id, mountpoint_parent_id, mountpoint_path)
 ) ENGINE=InnoDB;
 
 DROP TABLE IF EXISTS cell;
