@@ -215,14 +215,18 @@ sub print_mountpoints_by_vol {
 sub prune_mountpoints {
 	my $self = shift;
 	my ($date) = @_;
-	$self->{dbh}->do("DELETE FROM mountpoint WHERE mountpoint_lastseen < $date");
+	if ($date lt 0) {
+		print "prune_mountpoints(): Must supply non-zero value.\n";
+		return 0;
+	}
+	return $self->{dbh}->do("DELETE FROM mountpoint WHERE mountpoint_lastseen < $date");
 }
 ##
 ## prune mountpoints
 ##
 sub prune_volumes {
 	my $self = shift;
-	$self->{dbh}->do("DELETE FROM volume  
+	return $self->{dbh}->do("DELETE FROM volume  
 		WHERE NOT EXISTS 
 			(SELECT * FROM mountpoint WHERE volume.volume_name = mountpoint.volume_name)");
 }
