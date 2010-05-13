@@ -61,8 +61,8 @@ sub walkmounts($$%) {
 		$self->{mounts_by_vol}{$ref->{'mountpoint_volume_name'}}{'cell'} = $ref->{'mountpoint_cell'};
 		$self->{mounts_by_vol}{$ref->{'mountpoint_volume_name'}}{'paths'}{$thispath} = $ref->{'mountpoint_type'};
 
-		if (%volstack{$ref->{'mountpoint_volume_name'}} ne 1) {
-			%volstack{$ref{'mountpoint_volume_name'}} = 1;
+		if ($volstack{$ref->{'mountpoint_volume_name'}} ne 1) {
+			$volstack{$ref->{'mountpoint_volume_name'}} = 1;
 			$self->walkmounts($ref->{'mountpoint_volume_name'}, $thispath, %volstack);
 		}
 	}
