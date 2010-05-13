@@ -18,134 +18,64 @@ sub new {
 		return 0;
 	}
 
-	$self->refresh_mounts();
+#	$self->refresh_mounts();
 
 	return $self;
 }
 
 ##
-## cells
-##
-sub insert_cell {
-	my $self = shift;
-	my %existing_cells = $self->get_cells();
-	if (!defined($existing_cells{$_[0]})) {
-		$self->{dbh}->do("INSERT INTO cell (cell_name) VALUES (\"" .  $_[0] . "\")");
-	}
-}
-
-sub get_cells {
-	my $self = shift;
-	my %return;
-	my $sth = $self->{dbh}->prepare("SELECT cell_name,cell_id FROM cell");
-	$sth->execute();
-	while (my $ref = $sth->fetchrow_hashref) {
-		$return{$ref->{'cell_name'}} = $ref->{'cell_id'};
-	}
-	return \%return;
-}
-
-sub get_cell_by_id {
-	my $self = shift;
-	my ($cell_id) = @_;
-	my $sth = $self->{dbh}->prepare("SELECT cell_name FROM cell WHERE cell_id=$cell_id LIMIT 1");
-	$sth->execute();
-	my $ref = $sth->fetchrow_hashref();
-	return $ref->{'cell_name'};
-}
-
-##
-## voltypes
-##
-sub insert_voltype {
-	my $self = shift;
-	my %existing_voltypes = get_voltypes();
-	if (!defined($existing_voltypes{$_[0]})) {
-		$self->{dbh}->do("INSERT INTO voltype (voltype_name) VALUES (\"" .  $_[0] . "\")");
-	}
-}
-sub get_voltypes {
-	my $self = shift;
-	my %return;
-	$sth = $self->{dbh}->prepare("SELECT voltype_name,voltype_id FROM voltype");
-	$sth->execute();
-	while (my $ref = $sth->fetchrow_hashref) {
-		$return{$ref->{'voltype_name'}} = $ref->{'voltype_id'};
-	}
-	return \%return;
-}
-
-##
-## volumes
-##
-sub insert_volume {
-	my $self = shift;
-	my ($volume_id, $voltype_id, $volume_name, $cell_id) = @_;
-	$self->{dbh}->do("INSERT INTO volume (volume_id, voltype_id, volume_name, cell_id) 
-		VALUES ($volume_id, $voltype_id, '$volume_name', $cell_id) 
-		ON DUPLICATE KEY UPDATE voltype_id=$voltype_id, volume_name='$volume_name'");
-}
-
-sub get_volume_id_by_name {
-	my $self = shift;
-	my ($volume_name) = @_;
-	my $sth = $self->{dbh}->prepare("SELECT volume_id FROM volume WHERE volume_name='$volume_name' LIMIT 1");
-	$sth->execute();
-	if (my $ref = $sth->fetchrow_hashref()) {
-		$sth->finish();
-		return $ref->{'volume_id'};
-	} else {
-		$sth->finish();
-		return 0;
-	}
-}
-
-##
 ## mountpoints
 ##
-sub insert_mountpoint {
+sub insert_mountpoint($$$$$$$$$$) {
 	my $self = shift;
-	my ($volume_name, $mountpoint_parent_id, $cell_id, $mountpoint_type, $mountpoint_path, $mountpoint_lastseen) = @_;
-	$self->{dbh}->do("INSERT INTO mountpoint
-		(volume_name, mountpoint_parent_id, cell_id, mountpoint_path, mountpoint_type, mountpoint_lastseen) 
-		VALUES (\"$volume_name\", $mountpoint_parent_id, $cell_id, \"$mountpoint_path\", '$mountpoint_type', $mountpoint_lastseen) 
+	my ($parent_volume_type, $parent_volume_name, $parent_volume_id, $parent_volume_group_id,
+		$mountpoint_volume_name, $mountpoint_cell, $mountpoint_type, $mountpoint_relative_path, $lastseen) = @_;
+	$self->{dbh}->do("
+		INSERT INTO mountpoint
+			(parent_volume_type, parent_volume_name, parent_volume_id, parent_volume_group_id,
+			mountpoint_volume_name, mountpoint_cell, mountpoint_type, mountpoint_relative_path, lastseen) 
+		VALUES
+			(\"$parent_volume_type\", \"$parent_volume_name\", \"$parent_volume_id\", \"$parent_volume_group_id\",
+			\"$mountpoint_volume_name\", \"$mountpoint_cell\", \"$mountpoint_type\",
+			\"$mountpoint_relative_path\", \"$lastseen\") 
 		ON DUPLICATE KEY UPDATE 
-		mountpoint_type='$mountpoint_type', mountpoint_lastseen=$mountpoint_lastseen");
+			parent_volume_id=\"$parent_volume_id\", parent_volume_group_id=\"$parent_volume_group_id\", parent_volume_type=\"$parent_volume_type\",
+			mountpoint_type=\"$mountpoint_type\", lastseen=\"$lastseen\"
+		");
 }
 
 ##
 ## walk mountpoints recursively, given root volume id, base path, and initial volume stack
 ##
-sub walkmounts {
+sub walkmounts($$%) {
 	my $self = shift;
-	my ($root_volume_id, $path, %volstack) = @_;
-	#my (%return_by_path, %return_by_vol);
-	my $sth = $self->{dbh}->prepare("SELECT volume_name,mountpoint_path,mountpoint_type,cell_id FROM mountpoint 
-		WHERE mountpoint_parent_id=$root_volume_id");
+	my ($root_volume_name, $path, %volstack) = @_;
+	my $sth = $self->{dbh}->prepare("SELECT * FROM mountpoint WHERE parent_volume_name='$root_volume_name'");
 	$sth->execute();
 	while (my $ref = $sth->fetchrow_hashref()) {
-		my $thispath = $path . $ref->{'mountpoint_path'};
+		my $thispath = $path . $ref->{'mountpoint_relative_path'};
 		$self->{mounts_by_path}{$thispath}{'mtpttype'} = $ref->{'mountpoint_type'};
-		$self->{mounts_by_path}{$thispath}{'volname'} = $ref->{'volume_name'};
-		$self->{mounts_by_path}{$thispath}{'cell'} = $self->get_cell_by_id($ref->{'cell_id'});
+		$self->{mounts_by_path}{$thispath}{'volname'} = $ref->{'mountpoint_volume_name'};
+		$self->{mounts_by_path}{$thispath}{'cell'} = $ref->{'mountpoint_cell'};
 
-		$self->{mounts_by_vol}{$ref->{'volume_name'}}{'cell'} = $self->get_cell_by_id($ref->{'cell_id'});
-		$self->{mounts_by_vol}{$ref->{'volume_name'}}{'paths'}{$thispath} = $ref->{'mountpoint_type'};
+		$self->{mounts_by_vol}{$ref->{'mountpoint_volume_name'}}{'cell'} = $ref->{'mountpoint_cell'};
+		$self->{mounts_by_vol}{$ref->{'mountpoint_volume_name'}}{'paths'}{$thispath} = $ref->{'mountpoint_type'};
 
-		my $volid = $self->get_volume_id_by_name($ref->{'volume_name'});
-		if ($volid ne 0 and $volstack{$ref->{'volume_name'}} ne 1) {
-			$volstack{$ref->{'volume_name'}} = 1;
-			$self->walkmounts($volid, $thispath, %volstack);
+		if (%volstack{$ref->{'mountpoint_volume_name'}} ne 1) {
+			%volstack{$ref{'mountpoint_volume_name'}} = 1;
+			$self->walkmounts($ref->{'mountpoint_volume_name'}, $thispath, %volstack);
 		}
 	}
 	$sth->finish();
 }
 
-sub refresh_mounts {
+sub fetch_mounts {
 	my $self = shift;
 	$self->{mounts_by_path} = ();
 	$self->{mounts_by_vol} = ();
-	$self->walkmounts($self->get_volume_id_by_name('root.cell'), $self->{basepath}, ('root.cell', 'root.afs'));
+	$self->walkmounts('root.cell', $self->{basepath}, ('root.cell', 'root.afs'));
+	use Data::Dumper;
+	print Dumper($self->{mounts_by_path});
 }
 
 ##
@@ -219,16 +149,7 @@ sub prune_mountpoints {
 		print "prune_mountpoints(): Must supply non-zero value.\n";
 		return 0;
 	}
-	return $self->{dbh}->do("DELETE FROM mountpoint WHERE mountpoint_lastseen < $date");
-}
-##
-## prune mountpoints
-##
-sub prune_volumes {
-	my $self = shift;
-	return $self->{dbh}->do("DELETE FROM volume  
-		WHERE NOT EXISTS 
-			(SELECT * FROM mountpoint WHERE volume.volume_name = mountpoint.volume_name)");
+	return $self->{dbh}->do("DELETE FROM mountpoint WHERE lastseen < $date");
 }
 
 1;

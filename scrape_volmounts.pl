@@ -2,10 +2,19 @@
 
 use warnings;
 use strict;
+use Fcntl qw(:flock);
+
+# make sure we're the only instance running on this machine
+open(SELF, "<", $0) or die "Cannot open $0 - $!";
+flock(SELF, LOCK_EX|LOCK_NB) or die "$0 - Already running.";
 
 use VolmountsDB;
 
 my $vdb = VolmountsDB->new('dbuser', 'dbpass', 'dbhost', 'dbname', 'basepath');
+if (!$vdb) {
+	print "Failed to initiated VolmountsDB\n";
+	exit 1;
+}
 
 # volumes to skip
 my @volskip = ();
@@ -26,9 +35,6 @@ my @volskip = ();
 my $wscell = `fs wscell 2>&1`;
 $wscell =~ s/.*'(.*)'\n/$1/;
 
-my $cells = $vdb->get_cells;
-my $voltypes = $vdb->get_voltypes;
-
 while (<STDIN>) {
 	next if m/Processing Partition/;
 	next if m/volume type/;
@@ -38,38 +44,29 @@ while (<STDIN>) {
 	my $mtpt = $a[7];
 	
 	$mtpt =~ s/(%|#)(.+)/$2/;
-	my $mtpttype = $1;
+	my $mtpt_type = $1;
 
-	my $mtptcell = '';
+	my $mtpt_cell = '';
 	$mtpt =~ m/(.+:)?(.*)/;
-	$mtptcell = $1;
-	my $mtptvol = $2;
+	$mtpt_cell = $1;
+	my $mtpt_vol_name = $2;
 
-	next if (grep $_ eq $mtptvol || $_ eq $a[1], @volskip);
+	next if (grep $_ eq $mtpt_vol_name || $_ eq $a[1], @volskip);
 
-	if (!$mtptcell) {
-		$mtptcell = $wscell;
+	if (!$mtpt_cell) {
+		$mtpt_cell = $wscell;
 	}
 
-	my $voltype = $a[0];
-	my $volname = $a[1];
-	my $volid = $a[2];
-	my $pvolid = $a[3];
-	my $mtptpath = $a[8];
+	my $p_vol_type = $a[0];
+	my $p_vol_name = $a[1];
+	my $p_vol_id = $a[2];
+	my $p_volgroup_id = $a[3];
+	my $mtpt_rel_path = $a[8];
 
-	printf "%s ; type = %s ; name = %s ; id = %s ; pid = %s ; mtptvol = %s ; mtptcell = %s ; mtpttype = %s ; mtptpath = %s\n",
-		time, $voltype, $volname, $volid, $pvolid, $mtptvol, $mtptcell, $mtpttype, $mtptpath;
+	printf "%s ; p_vol_type = %s ; p_vol_name = %s ; p_vol_id = %s ; p_volgroup_id = %s ; mtpt_vol_name = %s ; mtpt_cell = %s ; mtpt_type = %s ; mtpt_rel_path = %s\n",
+		time, $p_vol_type, $p_vol_name, $p_vol_id, $p_volgroup_id, $mtpt_vol_name, $mtpt_cell, $mtpt_type, $mtpt_rel_path;
 	
-	if (!defined($cells->{$mtptcell})) {
-		$vdb->insert_cell($mtptcell);
-		$cells = $vdb->get_cells;
-	}
-	if (!defined($voltypes->{$voltype})) {
-		$vdb->insert_voltype($voltype);
-		$voltypes = $vdb->get_voltypes;
-	}
-	$vdb->insert_volume($volid, $voltypes->{$a[0]}, $volname, $cells->{$mtptcell});
-	$vdb->insert_mountpoint($mtptvol, $pvolid, $cells->{$mtptcell}, $mtpttype, $mtptpath, time);
+	$vdb->insert_mountpoint($p_vol_type, $p_vol_name, $p_vol_id, $p_volgroup_id, $mtpt_vol_name, $mtpt_cell, $mtpt_type, $mtpt_rel_path, time);
 }
 
 
