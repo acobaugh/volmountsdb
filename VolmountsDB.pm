@@ -74,8 +74,6 @@ sub fetch_mounts {
 	$self->{mounts_by_path} = ();
 	$self->{mounts_by_vol} = ();
 	$self->walkmounts('root.cell', $self->{basepath}, ('root.cell', 'root.afs'));
-	use Data::Dumper;
-	print Dumper($self->{mounts_by_path});
 }
 
 ##
