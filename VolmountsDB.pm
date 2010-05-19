@@ -50,6 +50,7 @@ sub insert_mountpoint($$$$$$$$$$) {
 sub walkmounts($$%) {
 	my $self = shift;
 	my ($root_volume_name, $path, %volstack) = @_;
+	$volstack{$root_volume_name} = 1;
 	my $sth = $self->{dbh}->prepare("SELECT * FROM mountpoint WHERE parent_volume_name='$root_volume_name'");
 	$sth->execute();
 	while (my $ref = $sth->fetchrow_hashref()) {
@@ -62,7 +63,6 @@ sub walkmounts($$%) {
 		$self->{mounts_by_vol}{$ref->{'mountpoint_volume_name'}}{'paths'}{$thispath} = $ref->{'mountpoint_type'};
 
 		if ($volstack{$ref->{'mountpoint_volume_name'}} ne 1) {
-			$volstack{$ref->{'mountpoint_volume_name'}} = 1;
 			$self->walkmounts($ref->{'mountpoint_volume_name'}, $thispath, %volstack);
 		}
 	}
